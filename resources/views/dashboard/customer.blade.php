@@ -43,8 +43,14 @@
         </li>
 
         <li>Buat Pesanan (Segera Hadir)</li>
+
         <li>Upload File Cetak (Segera Hadir)</li>
-        <li>Kelola Alamat (Segera Hadir)</li>
+
+        <li>
+            <a href="{{ route('customer.addresses.index') }}">
+                Kelola Alamat
+            </a>
+        </li>
     </ul>
 
     <hr>

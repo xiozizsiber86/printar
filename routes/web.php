@@ -5,6 +5,7 @@ use App\Http\Controllers\Merchant\ServiceController;
 use App\Http\Controllers\Merchant\OrderController;
 use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Http\Controllers\Customer\ShopController as CustomerShopController;
+use App\Http\Controllers\Customer\AddressController as CustomerAddressController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -130,6 +131,28 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/customer/shops/{id}', [CustomerShopController::class, 'show'])
             ->name('customer.shops.show');
+
+        // Pengelolaan Alamat Customer
+        Route::get('/customer/addresses', [CustomerAddressController::class, 'index'])
+            ->name('customer.addresses.index');
+
+        Route::get('/customer/addresses/create', [CustomerAddressController::class, 'create'])
+            ->name('customer.addresses.create');
+
+        Route::post('/customer/addresses', [CustomerAddressController::class, 'store'])
+            ->name('customer.addresses.store');
+
+        Route::get('/customer/addresses/{id}/edit', [CustomerAddressController::class, 'edit'])
+            ->name('customer.addresses.edit');
+
+        Route::put('/customer/addresses/{id}', [CustomerAddressController::class, 'update'])
+            ->name('customer.addresses.update');
+
+        Route::delete('/customer/addresses/{id}', [CustomerAddressController::class, 'destroy'])
+            ->name('customer.addresses.destroy');
+
+        Route::post('/customer/addresses/{id}/default', [CustomerAddressController::class, 'setDefault'])
+            ->name('customer.addresses.default');
     });
 
 });

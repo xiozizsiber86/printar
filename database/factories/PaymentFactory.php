@@ -59,4 +59,18 @@ class PaymentFactory extends Factory
             'status' => 'waiting_verification',
         ]);
     }
+
+    public function expired(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'expired',
+        ]);
+    }
+
+    public function refunded(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'refunded',
+        ]);
+    }
 }

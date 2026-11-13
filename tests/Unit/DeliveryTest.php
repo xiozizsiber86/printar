@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Models\Delivery;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class DeliveryTest extends TestCase
@@ -22,10 +22,18 @@ class DeliveryTest extends TestCase
     {
         $delivery = new Delivery();
 
-        $this->assertContains('order_id', $delivery->getFillable());
-        $this->assertContains('delivery_method', $delivery->getFillable());
-        $this->assertContains('courier_type', $delivery->getFillable());
-        $this->assertContains('delivery_fee', $delivery->getFillable());
+        $this->assertEquals([
+            'order_id',
+            'delivery_method',
+            'courier_type',
+            'courier_name',
+            'courier_phone',
+            'delivery_address',
+            'delivery_fee',
+            'shipped_at',
+            'received_at',
+            'notes',
+        ], $delivery->getFillable());
     }
 
     public function test_delivery_belongs_to_order(): void
@@ -36,5 +44,16 @@ class DeliveryTest extends TestCase
             BelongsTo::class,
             $delivery->order()
         );
+    }
+
+    public function test_delivery_has_correct_attribute_casts(): void
+    {
+        $delivery = new Delivery();
+
+        $casts = $delivery->getCasts();
+
+        $this->assertEquals('decimal:2', $casts['delivery_fee']);
+        $this->assertEquals('datetime', $casts['shipped_at']);
+        $this->assertEquals('datetime', $casts['received_at']);
     }
 }
