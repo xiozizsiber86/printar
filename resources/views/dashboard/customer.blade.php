@@ -42,9 +42,17 @@
             </a>
         </li>
 
-        <li>Buat Pesanan (Segera Hadir)</li>
+        <li>
+            <a href="{{ route('customer.shops.index') }}">
+                Buat Pesanan
+            </a>
+        </li>
 
-        <li>Upload File Cetak (Segera Hadir)</li>
+        <li>
+            <a href="{{ route('customer.orders.index') }}">
+                Upload File Cetak
+            </a>
+        </li>
 
         <li>
             <a href="{{ route('customer.addresses.index') }}">

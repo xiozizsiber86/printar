@@ -57,6 +57,12 @@ class User extends Authenticatable
         return $this->hasMany(CustomerAddress::class);
     }
 
+    // Relasi ke keranjang belanja
+    public function cart(): HasOne
+    {
+        return $this->hasOne(Cart::class, 'user_id');
+    }
+
     // Relasi ke pesanan
     public function orders(): HasMany
     {

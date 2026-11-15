@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Merchant;
 
 use App\Http\Controllers\Controller;
+use App\Models\OrderFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderController extends Controller
 {
@@ -49,6 +52,35 @@ class OrderController extends Controller
             ->findOrFail($id);
 
         return view('merchant.orders.show', compact('order'));
+    }
+
+    /**
+     * Download file cetak milik pesanan toko merchant.
+     */
+    public function downloadFile(
+        Request $request,
+        int $id,
+        int $fileId
+    ): StreamedResponse {
+        // Pastikan pesanan memang milik toko merchant yang login.
+        $order = $this->findMerchantOrder($request, $id);
+
+        // Pastikan file termasuk salah satu item pesanan tersebut.
+        $file = OrderFile::whereHas('orderItem', function ($query) use ($order) {
+            $query->where('order_id', $order->id);
+        })->findOrFail($fileId);
+
+        // Pastikan file benar-benar tersedia di penyimpanan.
+        abort_unless(
+            Storage::disk('local')->exists($file->file_path),
+            404,
+            'File cetak tidak ditemukan.'
+        );
+
+        return Storage::disk('local')->download(
+            $file->file_path,
+            basename($file->original_name)
+        );
     }
 
     public function accept(Request $request, int $id): RedirectResponse

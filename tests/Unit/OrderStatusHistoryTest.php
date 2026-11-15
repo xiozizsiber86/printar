@@ -2,7 +2,9 @@
 
 namespace Tests\Unit;
 
+use App\Models\Order;
 use App\Models\OrderStatusHistory;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Tests\TestCase;
@@ -46,5 +48,25 @@ class OrderStatusHistoryTest extends TestCase
             BelongsTo::class,
             $history->changedBy()
         );
+    }
+
+    public function test_history_can_be_saved_to_database(): void
+    {
+        $history = OrderStatusHistory::factory()->create();
+
+        $this->assertDatabaseHas('order_status_histories', [
+            'id' => $history->id,
+            'order_id' => $history->order_id,
+            'changed_by' => $history->changed_by,
+            'status' => $history->status,
+        ]);
+    }
+
+    public function test_history_is_connected_to_order_and_user(): void
+    {
+        $history = OrderStatusHistory::factory()->create();
+
+        $this->assertInstanceOf(Order::class, $history->order);
+        $this->assertInstanceOf(User::class, $history->changedBy);
     }
 }

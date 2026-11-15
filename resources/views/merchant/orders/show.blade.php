@@ -127,7 +127,7 @@
 
         <p>Pesanan sudah selesai.</p>
 
-        @elseif ($order->status === 'rejected')
+    @elseif ($order->status === 'rejected')
 
         <p>Pesanan telah ditolak.</p>
 
@@ -154,32 +154,60 @@
 
     <hr>
 
-    <h3>Daftar Layanan</h3>
+    <h3>Daftar Layanan dan File Cetak</h3>
 
     @forelse ($order->items as $item)
 
         <div>
             <h4>{{ $item->service_name }}</h4>
+
             <p>Harga: Rp{{ number_format($item->price, 0, ',', '.') }}</p>
             <p>Jumlah: {{ $item->quantity }} {{ $item->unit }}</p>
             <p>Subtotal: Rp{{ number_format($item->subtotal, 0, ',', '.') }}</p>
 
-            <h5>File Cetak</h5>
+            <h5>File Cetak Customer</h5>
 
             @forelse ($item->files as $file)
-                <p>
-                    {{ $file->original_name }}
-                    ({{ $file->mime_type ?? 'Tipe tidak diketahui' }})
-                </p>
+
+                <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+
+                    <p>
+                        <strong>Nama File:</strong>
+                        {{ $file->original_name }}
+                    </p>
+
+                    <p>
+                        <strong>Tipe File:</strong>
+                        {{ $file->mime_type ?? 'Tidak diketahui' }}
+                    </p>
+
+                    <p>
+                        <strong>Ukuran:</strong>
+                        {{ number_format($file->file_size / 1024, 2) }} KB
+                    </p>
+
+                    <a href="{{ route('merchant.orders.files.download', [
+                        'id' => $order->id,
+                        'fileId' => $file->id
+                    ]) }}">
+                        <button type="button">Download File Cetak</button>
+                    </a>
+
+                </div>
+
             @empty
-                <p>Tidak ada file yang diunggah.</p>
+
+                <p>Customer belum mengunggah file cetak.</p>
+
             @endforelse
         </div>
 
         <hr>
 
     @empty
+
         <p>Tidak ada item pesanan.</p>
+
     @endforelse
 
     <h3>Ringkasan Pembayaran</h3>

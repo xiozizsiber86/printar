@@ -6,6 +6,10 @@ use App\Http\Controllers\Merchant\OrderController;
 use App\Http\Controllers\Customer\OrderController as CustomerOrderController;
 use App\Http\Controllers\Customer\ShopController as CustomerShopController;
 use App\Http\Controllers\Customer\AddressController as CustomerAddressController;
+use App\Http\Controllers\Customer\CartController as CustomerCartController;
+use App\Http\Controllers\Customer\CheckoutController;
+use App\Http\Controllers\Customer\OrderFileController;
+use App\Http\Controllers\Customer\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -92,6 +96,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/merchant/orders/{id}', [OrderController::class, 'show'])
             ->name('merchant.orders.show');
 
+        // Download File Cetak Customer
+        Route::get(
+            '/merchant/orders/{id}/files/{fileId}/download',
+            [OrderController::class, 'downloadFile']
+        )->name('merchant.orders.files.download');
+
         Route::post('/merchant/orders/{id}/accept', [OrderController::class, 'accept'])
             ->name('merchant.orders.accept');
 
@@ -125,6 +135,28 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customer/orders/{id}', [CustomerOrderController::class, 'show'])
             ->name('customer.orders.show');
 
+        // Upload dan Hapus File Cetak
+        Route::post(
+            '/customer/orders/{orderId}/items/{itemId}/files',
+            [OrderFileController::class, 'store']
+        )->name('customer.orders.files.store');
+
+        Route::delete(
+            '/customer/orders/{orderId}/files/{fileId}',
+            [OrderFileController::class, 'destroy']
+        )->name('customer.orders.files.destroy');
+
+        // Pembayaran Customer
+        Route::get(
+            '/customer/orders/{orderId}/payment',
+            [PaymentController::class, 'show']
+        )->name('customer.payments.show');
+
+        Route::post(
+            '/customer/orders/{orderId}/payment/proof',
+            [PaymentController::class, 'uploadProof']
+        )->name('customer.payments.proof');
+
         // Pencarian dan Detail Toko Percetakan
         Route::get('/customer/shops', [CustomerShopController::class, 'index'])
             ->name('customer.shops.index');
@@ -153,6 +185,28 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/customer/addresses/{id}/default', [CustomerAddressController::class, 'setDefault'])
             ->name('customer.addresses.default');
-    });
 
+        // Keranjang Belanja Customer
+        Route::get('/customer/cart', [CustomerCartController::class, 'index'])
+            ->name('customer.cart.index');
+
+        Route::post('/customer/cart/{serviceId}', [CustomerCartController::class, 'add'])
+            ->name('customer.cart.add');
+
+        Route::put('/customer/cart/items/{itemId}', [CustomerCartController::class, 'update'])
+            ->name('customer.cart.update');
+
+        Route::delete('/customer/cart/items/{itemId}', [CustomerCartController::class, 'remove'])
+            ->name('customer.cart.remove');
+
+        Route::delete('/customer/cart', [CustomerCartController::class, 'clear'])
+            ->name('customer.cart.clear');
+
+        // Checkout Customer
+        Route::get('/customer/checkout', [CheckoutController::class, 'index'])
+            ->name('customer.checkout.index');
+
+        Route::post('/customer/checkout', [CheckoutController::class, 'store'])
+            ->name('customer.checkout.store');
+    });
 });
