@@ -72,11 +72,13 @@ class ServiceController extends Controller
         $shop->services()->create([
             ...$validated,
             'is_active' => false,
+            'verification_status' => 'pending',
+            'rejection_reason' => null,
         ]);
 
         return redirect()
             ->route('merchant.services.index')
-            ->with('success', 'Layanan berhasil ditambahkan dan menunggu aktivasi.');
+            ->with('success', 'Layanan berhasil ditambahkan dan menunggu verifikasi Admin.');
     }
 
     /**
@@ -92,7 +94,6 @@ class ServiceController extends Controller
             ->whereHas('services', function ($query) use ($id) {
                 $query->where('services.id', $id);
             })
-            ->with('services')
             ->firstOrFail()
             ->services()
             ->findOrFail($id);
@@ -105,7 +106,7 @@ class ServiceController extends Controller
     }
 
     /**
-     * Memperbarui layanan.
+     * Memperbarui layanan dan mengajukannya kembali untuk verifikasi.
      */
     public function update(Request $request, int $id): RedirectResponse
     {
@@ -125,16 +126,20 @@ class ServiceController extends Controller
             ->whereHas('services', function ($query) use ($id) {
                 $query->where('services.id', $id);
             })
-            ->with('services')
             ->firstOrFail()
             ->services()
             ->findOrFail($id);
 
-        $service->update($validated);
+        $service->update([
+            ...$validated,
+            'is_active' => false,
+            'verification_status' => 'pending',
+            'rejection_reason' => null,
+        ]);
 
         return redirect()
             ->route('merchant.services.index')
-            ->with('success', 'Layanan berhasil diperbarui.');
+            ->with('success', 'Layanan berhasil diperbarui dan diajukan kembali untuk verifikasi Admin.');
     }
 
     /**
@@ -150,7 +155,6 @@ class ServiceController extends Controller
             ->whereHas('services', function ($query) use ($id) {
                 $query->where('services.id', $id);
             })
-            ->with('services')
             ->firstOrFail()
             ->services()
             ->findOrFail($id);

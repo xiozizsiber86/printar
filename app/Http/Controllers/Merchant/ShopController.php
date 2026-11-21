@@ -9,9 +9,6 @@ use Illuminate\View\View;
 
 class ShopController extends Controller
 {
-    /**
-     * Menampilkan daftar toko milik merchant.
-     */
     public function index(Request $request): View
     {
         $merchantProfile = $request->user()->merchantProfile;
@@ -25,17 +22,11 @@ class ShopController extends Controller
         return view('merchant.shops.index', compact('shops'));
     }
 
-    /**
-     * Menampilkan formulir tambah toko.
-     */
     public function create(): View
     {
         return view('merchant.shops.create');
     }
 
-    /**
-     * Menyimpan toko baru.
-     */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -54,16 +45,15 @@ class ShopController extends Controller
         $merchantProfile->shops()->create([
             ...$validated,
             'is_active' => false,
+            'verification_status' => 'pending',
+            'rejection_reason' => null,
         ]);
 
         return redirect()
             ->route('merchant.shops.index')
-            ->with('success', 'Toko berhasil ditambahkan dan menunggu aktivasi.');
+            ->with('success', 'Toko berhasil ditambahkan dan menunggu verifikasi Admin.');
     }
 
-    /**
-     * Menampilkan formulir edit toko.
-     */
     public function edit(Request $request, int $id): View
     {
         $merchantProfile = $request->user()->merchantProfile;
@@ -75,9 +65,6 @@ class ShopController extends Controller
         return view('merchant.shops.edit', compact('shop'));
     }
 
-    /**
-     * Memperbarui data toko.
-     */
     public function update(Request $request, int $id): RedirectResponse
     {
         $merchantProfile = $request->user()->merchantProfile;
@@ -95,16 +82,18 @@ class ShopController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
-        $shop->update($validated);
+        $shop->update([
+            ...$validated,
+            'is_active' => false,
+            'verification_status' => 'pending',
+            'rejection_reason' => null,
+        ]);
 
         return redirect()
             ->route('merchant.shops.index')
-            ->with('success', 'Data toko berhasil diperbarui.');
+            ->with('success', 'Data toko diperbarui dan menunggu verifikasi ulang Admin.');
     }
 
-    /**
-     * Menghapus toko milik merchant.
-     */
     public function destroy(Request $request, int $id): RedirectResponse
     {
         $merchantProfile = $request->user()->merchantProfile;

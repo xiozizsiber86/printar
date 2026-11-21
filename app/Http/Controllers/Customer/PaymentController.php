@@ -4,45 +4,34 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
     /**
-     * Menampilkan halaman pembayaran pesanan.
+     * Menampilkan detail pembayaran pesanan.
      */
-    public function show(Request $request, int $orderId)
+    public function show(Request $request, $orderId)
     {
         $order = Order::where('user_id', $request->user()->id)
             ->with('payment')
             ->findOrFail($orderId);
 
         if (!$order->payment) {
-            return back()->with(
-                'error',
-                'Data pembayaran untuk pesanan ini belum tersedia.'
-            );
+            return redirect()
+                ->route('customer.orders.show', $order->id)
+                ->with('error', 'Data pembayaran tidak ditemukan.');
         }
 
         return view('customer.payments.show', compact('order'));
     }
 
     /**
-     * Mengunggah bukti transfer.
+     * Mengunggah bukti pembayaran Transfer Manual.
      */
-    public function uploadProof(Request $request, int $orderId)
+    public function uploadProof(Request $request, $orderId)
     {
-        $request->validate([
-            'proof_file' => [
-                'required',
-                'file',
-                'mimes:jpg,jpeg,png,pdf',
-                'max:10240',
-            ],
-        ]);
-
         $order = Order::where('user_id', $request->user()->id)
             ->with('payment')
             ->findOrFail($orderId);
@@ -56,32 +45,58 @@ class PaymentController extends Controller
             );
         }
 
-        if (!in_array($payment->status, ['pending', 'rejected'])) {
+        // Upload bukti hanya diperbolehkan untuk Transfer Manual.
+        if ($payment->method !== 'manual_transfer') {
             return back()->with(
                 'error',
-                'Bukti pembayaran tidak dapat diunggah pada status pembayaran ini.'
+                'Upload bukti hanya tersedia untuk pembayaran Transfer Manual.'
             );
         }
 
-        // Hapus bukti lama jika Customer mengunggah ulang.
-        if ($payment->proof_file) {
-            Storage::disk('local')->delete($payment->proof_file);
+        // Bukti hanya bisa diunggah ketika pembayaran pending atau rejected.
+        if (!in_array($payment->status, ['pending', 'rejected'], true)) {
+            return back()->with(
+                'error',
+                'Bukti pembayaran tidak dapat diunggah pada status pembayaran saat ini.'
+            );
         }
 
-        $path = $request->file('proof_file')->store(
+        $validated = $request->validate([
+            'proof_file' => [
+                'required',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:10240',
+            ],
+        ], [
+            'proof_file.required' => 'Silakan pilih bukti pembayaran.',
+            'proof_file.mimes' => 'Bukti harus berupa JPG, JPEG, PNG, atau PDF.',
+            'proof_file.max' => 'Ukuran bukti pembayaran maksimal 10 MB.',
+        ]);
+
+        // Hapus bukti lama jika pelanggan mengunggah ulang.
+        if ($payment->proof_file) {
+            Storage::disk('public')->delete($payment->proof_file);
+        }
+
+        // Simpan bukti pembayaran.
+        $proofPath = $validated['proof_file']->store(
             'payment-proofs/' . $order->id,
-            'local'
+            'public'
         );
 
+        // Perbarui data pembayaran.
         $payment->update([
-            'method' => 'manual_transfer',
-            'proof_file' => $path,
+            'proof_file' => $proofPath,
             'status' => 'waiting_verification',
-            'notes' => 'Bukti transfer telah diunggah dan menunggu verifikasi Admin.',
+            'notes' => 'Bukti pembayaran telah diunggah dan menunggu verifikasi Admin.',
         ]);
 
         return redirect()
             ->route('customer.payments.show', $order->id)
-            ->with('success', 'Bukti transfer berhasil diunggah. Menunggu verifikasi Admin.');
+            ->with(
+                'success',
+                'Bukti pembayaran berhasil diunggah. Silakan tunggu verifikasi Admin.'
+            );
     }
 }

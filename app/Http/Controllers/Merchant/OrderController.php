@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Merchant;
 
 use App\Http\Controllers\Controller;
 use App\Models\OrderFile;
+use App\Notifications\OrderStatusNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -54,23 +55,17 @@ class OrderController extends Controller
         return view('merchant.orders.show', compact('order'));
     }
 
-    /**
-     * Download file cetak milik pesanan toko merchant.
-     */
     public function downloadFile(
         Request $request,
         int $id,
         int $fileId
     ): StreamedResponse {
-        // Pastikan pesanan memang milik toko merchant yang login.
         $order = $this->findMerchantOrder($request, $id);
 
-        // Pastikan file termasuk salah satu item pesanan tersebut.
         $file = OrderFile::whereHas('orderItem', function ($query) use ($order) {
             $query->where('order_id', $order->id);
         })->findOrFail($fileId);
 
-        // Pastikan file benar-benar tersedia di penyimpanan.
         abort_unless(
             Storage::disk('local')->exists($file->file_path),
             404,
@@ -132,7 +127,66 @@ class OrderController extends Controller
     }
 
     /**
-     * Mencatat bahwa pesanan sudah diserahkan kepada kurir.
+     * Mengatur informasi kurir pesanan.
+     */
+    public function updateDelivery(
+        Request $request,
+        int $id
+    ): RedirectResponse {
+        $order = $this->findMerchantOrder($request, $id);
+
+        $delivery = $order->delivery;
+
+        if (!$delivery || $delivery->delivery_method !== 'delivery') {
+            return back()->with(
+                'error',
+                'Data pengiriman tidak tersedia atau bukan pesanan delivery.'
+            );
+        }
+
+        if ($delivery->shipped_at || $delivery->received_at) {
+            return back()->with(
+                'error',
+                'Informasi kurir tidak dapat diubah setelah pesanan dikirim.'
+            );
+        }
+
+        $validated = $request->validate([
+            'courier_type' => [
+                'required',
+                'in:merchant,third_party',
+            ],
+            'courier_name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+            'courier_phone' => [
+                'nullable',
+                'string',
+                'max:20',
+            ],
+            'notes' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ]);
+
+        $delivery->update([
+            'courier_type' => $validated['courier_type'],
+            'courier_name' => $validated['courier_name'],
+            'courier_phone' => $validated['courier_phone'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('merchant.orders.show', $order->id)
+            ->with('success', 'Informasi kurir berhasil disimpan.');
+    }
+
+    /**
+     * Menandai pesanan sudah diserahkan kepada kurir.
      */
     public function markShipped(Request $request, int $id): RedirectResponse
     {
@@ -152,20 +206,46 @@ class OrderController extends Controller
             return back()->with('error', 'Pesanan sudah ditandai dikirim.');
         }
 
-        DB::transaction(function () use ($delivery) {
+        if (!$delivery->courier_type || !$delivery->courier_name) {
+            return back()->with(
+                'error',
+                'Lengkapi informasi kurir sebelum mengirim pesanan.'
+            );
+        }
+
+        $notes = 'Pesanan sudah diserahkan kepada kurir.';
+
+        DB::transaction(function () use (
+            $order,
+            $delivery,
+            $request,
+            $notes
+        ) {
+            // Simpan waktu pengiriman.
             $delivery->update([
                 'shipped_at' => now(),
             ]);
+
+            // Simpan riwayat status pengiriman.
+            $order->statusHistories()->create([
+                'changed_by' => $request->user()->id,
+                'status' => 'shipped',
+                'notes' => $notes,
+            ]);
         });
+
+        // Kirim notifikasi kepada Customer.
+        $this->notifyCustomer(
+            $order,
+            'shipped',
+            $notes
+        );
 
         return redirect()
             ->route('merchant.orders.show', $order->id)
             ->with('success', 'Pesanan berhasil ditandai sudah dikirim.');
     }
 
-    /**
-     * Menyelesaikan pesanan yang sudah diterima atau diambil pelanggan.
-     */
     public function complete(Request $request, int $id): RedirectResponse
     {
         $order = $this->findMerchantOrder($request, $id);
@@ -207,14 +287,17 @@ class OrderController extends Controller
             ]);
         });
 
+        $this->notifyCustomer(
+            $order,
+            'completed',
+            'Pesanan telah diterima atau diambil oleh pelanggan.'
+        );
+
         return redirect()
             ->route('merchant.orders.show', $order->id)
             ->with('success', 'Pesanan berhasil diselesaikan.');
     }
 
-    /**
-     * Mengambil pesanan hanya jika dimiliki merchant yang sedang login.
-     */
     private function findMerchantOrder(Request $request, int $id)
     {
         $merchantProfile = $request->user()->merchantProfile;
@@ -261,8 +344,24 @@ class OrderController extends Controller
             ]);
         });
 
+        $this->notifyCustomer($order, $newStatus, $notes);
+
         return redirect()
             ->route('merchant.orders.show', $order->id)
             ->with('success', $message);
+    }
+
+    private function notifyCustomer(
+        $order,
+        string $status,
+        ?string $notes = null
+    ): void {
+        $order->loadMissing('user');
+
+        if ($order->user) {
+            $order->user->notify(
+                new OrderStatusNotification($order, $status, $notes)
+            );
+        }
     }
 }

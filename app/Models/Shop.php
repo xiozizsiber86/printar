@@ -20,6 +20,8 @@ class Shop extends Model
         'longitude',
         'phone',
         'is_active',
+        'verification_status',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -31,19 +33,16 @@ class Shop extends Model
         ];
     }
 
-    // Relasi ke profil merchant
     public function merchantProfile(): BelongsTo
     {
         return $this->belongsTo(MerchantProfile::class, 'merchant_id');
     }
 
-    // Relasi ke layanan percetakan
     public function services(): HasMany
     {
         return $this->hasMany(Service::class, 'shop_id');
     }
 
-    // Relasi ke pesanan
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'shop_id');

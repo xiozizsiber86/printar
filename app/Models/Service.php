@@ -19,6 +19,8 @@ class Service extends Model
         'price',
         'unit',
         'is_active',
+        'verification_status',
+        'rejection_reason',
     ];
 
     protected function casts(): array
@@ -29,21 +31,18 @@ class Service extends Model
         ];
     }
 
-    // Relasi ke toko
     public function shop(): BelongsTo
     {
-        return $this->belongsTo(Shop::class, 'shop_id');
+        return $this->belongsTo(Shop::class);
     }
 
-    // Relasi ke kategori layanan
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class);
     }
 
-    // Relasi ke item pesanan
     public function orderItems(): HasMany
     {
-        return $this->hasMany(OrderItem::class, 'service_id');
+        return $this->hasMany(OrderItem::class);
     }
 }
